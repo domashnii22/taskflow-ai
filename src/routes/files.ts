@@ -16,7 +16,7 @@ if (!existsSync(UPLOAD_DIR)) {
 const MAGIC_NUMBERS: Record<string, number[]> = {
   'image/png': [0x89, 0x50, 0x4e, 0x47],
   'image/jpeg': [0xff, 0xd8, 0xff, 0xe0],
-  'image/jpeg': [0xff, 0xd8, 0xff, 0xe1],
+  // 'image/jpeg': [0xff, 0xd8, 0xff, 0xe1],
 };
 
 function checkMagic(buffer: Buffer, magic: number[]): boolean {

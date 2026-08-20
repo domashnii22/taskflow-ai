@@ -10,6 +10,7 @@ import { blockEventLoop } from './routes/block';
 import { getFile, uploadFile } from './routes/files';
 import { logRequest } from './middleware/logger';
 import { sendError } from './utils/response';
+import { getStats } from './routes/stats';
 
 const server = createServer((req, res) => {
   const startTime = Date.now();
@@ -20,6 +21,13 @@ const server = createServer((req, res) => {
   const method = req.method || 'GET';
 
   // --- Роутинг ---
+
+  // GET /stats
+  if (method === 'GET' && path === '/stats') {
+    getStats(req, res);
+    res.on('finish', () => logRequest(req, res, startTime));
+    return;
+  }
 
   // GET /tasks
   if (method === 'GET' && path === '/tasks') {

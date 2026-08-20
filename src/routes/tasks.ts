@@ -124,3 +124,5 @@ export async function deleteTask(
   tasks.splice(index, 1);
   sendJson(res, 200, { message: 'Task deleted' });
 }
+
+export { tasks };
