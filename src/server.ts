@@ -1,4 +1,4 @@
-import { createServer, IncomingMessage } from 'node:http';
+import { createServer } from 'node:http';
 import {
   getTasks,
   createTask,
@@ -7,17 +7,14 @@ import {
   deleteTask,
 } from './routes/tasks';
 import { blockEventLoop } from './routes/block';
+import { getFile, uploadFile } from './routes/files';
+import { logRequest } from './middleware/logger';
 import { sendError } from './utils/response';
 
-// Логирование запросов (stream-based — будет доработано позже, пока просто console)
-function logRequest(req: IncomingMessage) {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-}
-
 const server = createServer((req, res) => {
-  logRequest(req);
+  const startTime = Date.now();
 
-  // Разбор URL и метода
+  // Разбор URL
   const url = new URL(req.url || '/', `http://${req.headers.host}`);
   const path = url.pathname;
   const method = req.method || 'GET';
@@ -26,45 +23,74 @@ const server = createServer((req, res) => {
 
   // GET /tasks
   if (method === 'GET' && path === '/tasks') {
-    return getTasks(req, res);
+    getTasks(req, res).finally(() => logRequest(req, res, startTime));
+    return;
   }
 
   // POST /tasks
   if (method === 'POST' && path === '/tasks') {
-    return createTask(req, res);
+    createTask(req, res).finally(() => logRequest(req, res, startTime));
+    return;
   }
 
   // GET /tasks/:id
   const taskIdMatch = path.match(/^\/tasks\/([a-f0-9-]+)$/);
   if (method === 'GET' && taskIdMatch) {
-    const id = taskIdMatch[1];
-    return getTaskById(req, res, id);
+    getTaskById(req, res, taskIdMatch[1]).finally(() =>
+      logRequest(req, res, startTime),
+    );
+    return;
   }
 
   // PUT /tasks/:id
   if (method === 'PUT' && taskIdMatch) {
-    const id = taskIdMatch[1];
-    return updateTask(req, res, id);
+    updateTask(req, res, taskIdMatch[1]).finally(() =>
+      logRequest(req, res, startTime),
+    );
+    return;
   }
 
   // DELETE /tasks/:id
   if (method === 'DELETE' && taskIdMatch) {
-    const id = taskIdMatch[1];
-    return deleteTask(req, res, id);
+    deleteTask(req, res, taskIdMatch[1]).finally(() =>
+      logRequest(req, res, startTime),
+    );
+    return;
+  }
+
+  // GET /files/:filename
+  const fileMatch = path.match(/^\/files\/(.+)$/);
+  if (method === 'GET' && fileMatch) {
+    getFile(req, res, fileMatch[1]);
+    // Логируем после завершения (стрим сам закроется)
+    res.on('finish', () => logRequest(req, res, startTime));
+    return;
+  }
+
+  // POST /upload
+  if (method === 'POST' && path === '/upload') {
+    uploadFile(req, res);
+    res.on('finish', () => logRequest(req, res, startTime));
+    return;
   }
 
   // GET /block (временно)
   if (method === 'GET' && path === '/block') {
-    return blockEventLoop(req, res);
+    blockEventLoop(req, res);
+    logRequest(req, res, startTime);
+    return;
   }
 
   // 404
   sendError(res, 404, 'Not Found');
+  logRequest(req, res, startTime);
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📋 Tasks API: /tasks`);
+  console.log(`📁 Files: GET /files/:filename`);
+  console.log(`📤 Upload: POST /upload (multipart/form-data)`);
   console.log(`⛔ Blocking demo: /block (use with caution!)`);
 });

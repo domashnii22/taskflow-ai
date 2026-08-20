@@ -17,5 +17,9 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@types/busboy": "^1.5.4",
+    "busboy": "^1.6.0"
   }
 }
